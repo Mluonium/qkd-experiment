@@ -1,0 +1,131 @@
+C = cov([real(seg_Ref) imag(seg_Ref) real(seg_Rx) imag(seg_Rx)]);
+
+    xI = C(1,1); xQ = C(2,2);
+
+    yI = C(3,3); yQ = C(4,4);
+
+    zI = C(1,3); zQ = C(2,4);
+
+ 
+
+    zAvg     = 0.5*(abs(zI) + abs(zQ));52570
+
+    xAvg     = 0.5*(xI + xQ);
+
+    VshotAvg = 0.5*(SNU_I + SNU_Q);
+
+    yAvg     = 0.5*(yI + yQ);
+
+ 
+
+    EN_I = (yI - (zI^2)/xI)/SNU_I - 1 - VelecI;
+
+    EN_Q = (yQ - (zQ^2)/xQ)/SNU_Q - 1 - VelecQ;
+
+ 
+
+    etaAvg_chunk = (zAvg^2) / (xAvg * NnB2B * VshotAvg * tauAvg);
+
+   MI_chunk= -log2(1 - zAvg^2 / (xAvg * yAvg));
+
+ 
+
+ 
+
+peQch = struct('u',(EN_I_avg(j)+EN_Q_avg(j))*0.5+Non_G_noise,'eta',T_sqrt_avg(j)^2,'t',( VelecI_avg(j)+VelecQ_avg(j))*0.5,'tau',0.68,'N', N);
+
+ 
+
+function I_YE = getHolevo(varargin)
+
+ 
+
+    if nargin == 1
+
+        peQch = varargin{1};
+
+        %unpack struct
+
+        eta = peQch.eta;
+
+        tau = peQch.tau;
+
+        excess_photons = peQch.u;
+
+        t = peQch.t;
+
+        Nphoton = peQch.NnB2B;       
+
+        T = eta*tau;
+
+    elseif nargin==6
+
+        eta = varargin{1};
+
+        tau = varargin{2};
+
+        excess_photons = varargin{3};
+
+        t = varargin{4};
+
+        Nphoton = varargin{5};       
+
+        T = varargin{6};
+
+    else
+
+        error('Function expects either 1 or 6 arguments')
+
+    end
+
+       
+
+    Q = (1 - eta)*tau./(1 + excess_photons + t ...
+
+                + T.*Nphoton);
+
+    w = excess_photons./(tau*(1 - eta));
+
+ 
+
+    a1 = (1 - eta).*Nphoton + eta.*w + 0.5;
+
+    b1 = w + 0.5;
+
+    c1 = sqrt(eta.*w.*(1 + w));
+
+ 
+
+    a2 = (1 - eta).*Nphoton + eta.*w + 0.5...
+
+        - eta.*Q.*(Nphoton - w).^2;
+
+    b2 = w + 0.5 -w.*(1 + w).*Q ;
+
+    c2 = sqrt(eta.*w.*(1 + w)).*(1 + (Nphoton - w).*Q);
+
+ 
+
+    v1_plus = 0.5.*abs(a1 - b1 + sqrt((a1 + b1).^2 - 4.*c1.^2));
+
+    v1_minus = 0.5.*abs(a1 - b1 - sqrt((a1 + b1).^2 - 4.*c1.^2));
+
+ 
+
+    v2_plus = 0.5.*abs(a2 - b2 + sqrt((a2 + b2).^2 - 4.*c2.^2));
+
+    v2_minus = 0.5.*abs(a2 - b2 - sqrt((a2 + b2).^2 - 4.*c2.^2));
+
+ 
+
+    hol_g = @(x) (x+1).*log2(x+1) - x.*log2(x);
+
+    I_YE = hol_g(v1_plus - 0.5) + hol_g(v1_minus - 0.5) - hol_g(v2_plus - 0.5) - hol_g(v2_minus - 0.5);
+
+end
+
+ 
+
+ 
+
+Key_rate =  beta*MI_chunk - I_YE;
